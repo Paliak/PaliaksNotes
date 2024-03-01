@@ -1,0 +1,9 @@
+site_name: Paliak's Notes
+base_url: /PaliaksNotes
+theme:
+  name: null
+  custom_dir: 'custom_theme/'
+  darkreader: true
+  highlightjs: true
+plugins: []
+repo_url: "https://github.com/Paliak"

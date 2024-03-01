@@ -1,0 +1,132 @@
+<!doctype html>
+<html>
+
+<head>
+    {%- block site_meta %}
+    {%- block htmltitle %}
+    <title>{% if page and page.title and not page.is_homepage %}{{ page.title }} - {% endif %}{{ config.site_name }}
+    </title>
+    {%- endblock %}
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    {% if page and page.is_homepage %}
+    <meta name="description" content="{{ config['site_description'] }}">{% endif %}
+    {% if page and page.canonical_url %}
+    <link rel="canonical" href="{{ page.canonical_url }}">{% endif %}
+    {% if config.site_author %}
+    <meta name="author" content="{{ config.site_author }}">{% endif %}
+
+    {% if config.theme.favicon %}
+    <link rel="icon" type="image/x-icon" href="{{ config.theme.favicon|url }}">
+    {% else %}
+    <link rel="icon" type="image/x-icon" href="{{ 'assets/img/favicon.ico'|url }}">
+    {% endif %}
+
+    {%- block libs %}
+    {%- if config.theme.highlightjs %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+
+    {%- for lang in config.theme.hljs_languages %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/languages/{{lang}}.min.js"></script>
+    {%- endfor %}
+    <script>hljs.initHighlightingOnLoad();</script>
+    {%- endif %}
+    {%- if config.theme.darkreader %}
+    <script src="https://cdn.jsdelivr.net/npm/darkreader@4.9.79/darkreader.min.js"></script>
+    <script>
+        DarkReader.setFetchMethod(window.fetch);
+        DarkReader.auto();
+    </script>
+    {%- endif %}
+    {%- endblock %}
+
+    {%- endblock %}
+
+    {%- block styles %}
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Mono:400,700">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="{{ 'assets/css/bootstrap.min.css'|url }}">
+    <link rel="stylesheet" href="{{ 'assets/css/main.css'|url }}">
+
+    {%- for path in extra_css %}
+    <link href="{{ path }}" rel="stylesheet">
+    {%- endfor %}
+
+    {%- endblock %}
+</head>
+
+<body>
+    <div class="container py-3">
+        <header>
+            <nav class="navbar navbar-expand-xl border-bottom">
+                <div class="container-fluid">
+                    {% if config.theme.logo %}
+                    <img class="logo" src="{{ config.theme.logo|url }}">
+                    {% endif %}
+
+                    {% if config.site_name %}
+                    <a href="{% if config.base_url %}{{ config.base_url }}{% else %}#{% endif %}" class="{{ config.theme.site_name_style }} fs-2 title-color site-name"
+                        id="component-site-name" style="text-transform: uppercase;">{{ config.site_name }}</a>
+                    {% endif %}
+
+                    <div class="collapse navbar-collapse flex-column ml-auto" id="navbarsMenu">
+                        <ul class="navbar-nav">
+                            {% if config.theme.darkreader %}
+                            <li class="nav-item">
+                                <div class="md-source-repo-icon">
+                                    <i id="theme-toggle" class="fa" aria-hidden="true"></i>
+                                </div>
+                            </li>
+                            {% endif %}
+                            {% if config.repo_url %}
+                            <li class="nav-item">
+                                <a href="{{ config.repo_url }}">
+                                    <div class="md-source-repo-icon">
+                                        <i class="fa fa-github-alt" aria-hidden="true"></i>
+                                    </div>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </header>
+        <main>
+            <section class="container post">
+                <article>
+                    <p>{{ page.content }}</p>
+                </article>
+            </section>
+        </main>
+    </div>
+</body>
+{%- if config.theme.darkreader %}
+<script>
+    var themeToggle = document.getElementById("theme-toggle")
+    if (DarkReader.isEnabled()) {
+        themeToggle.classList.add("fa-moon-o");
+    } else {
+        themeToggle.classList.add("fa-sun-o");
+    }
+    themeToggle.addEventListener("click", function () {
+        DarkReader.auto(false)
+        if (themeToggle.classList.contains("fa-sun-o")) {
+            themeToggle.classList.remove("fa-sun-o");
+            themeToggle.classList.add("fa-moon-o");
+            DarkReader.enable();
+        }
+        else if (themeToggle.classList.contains("fa-moon-o")) {
+            themeToggle.classList.remove("fa-moon-o");
+            themeToggle.classList.add("fa-sun-o");
+            DarkReader.disable();
+        }
+    });
+</script>
+{%- endif %}
+
+</html>

@@ -1,0 +1,54 @@
+name: Build and deploy to github pages
+
+on:
+  push:
+    branches: [$default-branch]
+  workflow_dispatch:
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - uses: actions/setup-python@v5
+      - uses: actions/configure-pages@v4
+      - name: Install Tools
+        run: |
+          npm i clean-css-cli
+          npm i html-minifier
+          pip install mkdocs
+          sudo apt-get install -y moreutils
+      - name: Build Website
+        run: mkdocs build
+      - name: Minify Generated Files
+        run: |
+          for file in $(find site/ -name "*.html" -type f); do npx html-minifier --collapse-whitespace --remove-comments --remove-optional-tags --remove-redundant-attributes --remove-script-type-attributes --remove-tag-whitespace --use-short-doctype --minify-css true --minify-js true $file | sponge $file; done
+          for file in $(find site/ -name "*.css" -type f); do npx clean-css-cli $file | sponge $file; done
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site
+
+  deploy:
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
