@@ -108,23 +108,11 @@
 {%- if config.theme.darkreader %}
 <script>
     var themeToggle = document.getElementById("theme-toggle")
-    if (DarkReader.isEnabled()) {
-        themeToggle.classList.add("fa-moon-o");
-    } else {
-        themeToggle.classList.add("fa-sun-o");
-    }
+    themeToggle.classList.add(DarkReader.isEnabled() ? "fa-moon-o" : "fa-sun-o");
     themeToggle.addEventListener("click", function () {
         DarkReader.auto(false)
-        if (themeToggle.classList.contains("fa-sun-o")) {
-            themeToggle.classList.remove("fa-sun-o");
-            themeToggle.classList.add("fa-moon-o");
-            DarkReader.enable();
-        }
-        else if (themeToggle.classList.contains("fa-moon-o")) {
-            themeToggle.classList.remove("fa-moon-o");
-            themeToggle.classList.add("fa-sun-o");
-            DarkReader.disable();
-        }
+		if (themeToggle.classList.toggle("fa-sun-o")) DarkReader.disable();
+		if (themeToggle.classList.toggle("fa-moon-o")) DarkReader.enable();
     });
 </script>
 {%- endif %}
