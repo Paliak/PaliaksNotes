@@ -39,7 +39,9 @@
     <script src="https://cdn.jsdelivr.net/npm/darkreader@4.9.79/darkreader.min.js"></script>
     <script>
         DarkReader.setFetchMethod(window.fetch);
-        DarkReader.auto();
+        DarkReader.auto(!localStorage.getItem("theme"));
+		if (localStorage.getItem("theme") === "dark") DarkReader.enable();
+		else if (localStorage.getItem("theme") === "light") DarkReader.disable();
     </script>
     {%- endif %}
     {%- endblock %}
@@ -110,9 +112,10 @@
     var themeToggle = document.getElementById("theme-toggle")
     themeToggle.classList.add(DarkReader.isEnabled() ? "fa-moon-o" : "fa-sun-o");
     themeToggle.addEventListener("click", function () {
-        DarkReader.auto(false)
+        DarkReader.auto(false);
 		if (themeToggle.classList.toggle("fa-sun-o")) DarkReader.disable();
 		if (themeToggle.classList.toggle("fa-moon-o")) DarkReader.enable();
+		localStorage.setItem("theme", DarkReader.isEnabled() ? "dark" : "light");
     });
 </script>
 {%- endif %}
