@@ -12,3 +12,6 @@ Easy Linux Box. Spring boot. Enumeration. Session hijack. Decompilation. GTFO bi
 
 ### [Base64 encoding troubles](./b64Madness/)
 Base64. Encoding. Payloads.
+
+### [Solving `Sandbox In a Box` Crackme](./SandBoxInABox/)
+Golang. Crackme. Reversing. Malware.
