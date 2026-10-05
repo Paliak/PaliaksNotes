@@ -3,8 +3,10 @@ base_url: /PaliaksNotes
 theme:
   name: null
   custom_dir: 'custom_theme/'
-  darkreader: true
+  darkmode: true
   highlightjs: true
+  hljs_languages:
+    - powershell
 plugins: []
 
 repo_url: "https://github.com/Paliak"

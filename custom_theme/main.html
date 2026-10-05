@@ -28,22 +28,12 @@
     {%- block libs %}
     {%- if config.theme.highlightjs %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/languages/powershell.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 
     {%- for lang in config.theme.hljs_languages %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/languages/{{lang}}.min.js"></script>
     {%- endfor %}
     <script>hljs.initHighlightingOnLoad();</script>
-    {%- endif %}
-    {%- if config.theme.darkreader %}
-    <script src="https://cdn.jsdelivr.net/npm/darkreader@4.9.79/darkreader.min.js"></script>
-    <script>
-        DarkReader.setFetchMethod(window.fetch);
-        DarkReader.auto(!localStorage.getItem("theme"));
-		if (localStorage.getItem("theme") === "dark") DarkReader.enable();
-		else if (localStorage.getItem("theme") === "light") DarkReader.disable();
-    </script>
     {%- endif %}
     {%- endblock %}
 
@@ -52,7 +42,6 @@
     {%- block styles %}
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Mono:400,700">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    <link rel="stylesheet" href="{{ 'assets/css/bootstrap.min.css'|url }}">
     <link rel="stylesheet" href="{{ 'assets/css/main.css'|url }}">
 
     {%- for path in extra_css %}
@@ -63,34 +52,35 @@
 </head>
 
 <body>
-    <div class="container py-3">
+    <div class="page-wrapper">
         <header>
-            <nav class="navbar navbar-expand-xl border-bottom">
-                <div class="container-fluid">
+            <nav class="navbar">
+                <div class="navbar-container">
                     {% if config.theme.logo %}
                     <img class="logo" src="{{ config.theme.logo|url }}">
                     {% endif %}
 
                     {% if config.site_name %}
-                    <a href="{% if config.base_url %}{{ config.base_url }}{% else %}#{% endif %}" class="{{ config.theme.site_name_style }} fs-2 title-color site-name"
-                        id="component-site-name" style="text-transform: uppercase;">{{ config.site_name }}</a>
+                    <a href="{% if config.base_url %}{{ config.base_url }}{% else %}#{% endif %}" class="{{ config.theme.site_name_style }} site-title title-color"
+                        id="component-site-name">{{ config.site_name }}</a>
                     {% endif %}
 
-                    <div class="collapse navbar-collapse flex-column ml-auto" id="navbarsMenu">
+                    <div class="navbar-menu" id="navbarsMenu">
                         <ul class="navbar-nav">
-                            {% if config.theme.darkreader %}
+                            {% if config.theme.darkmode %}
                             <li class="nav-item">
-                                <div class="md-source-repo-icon">
-                                    <i id="theme-toggle" class="fa" aria-hidden="true"></i>
-                                </div>
+                                <!-- Hidden checkbox powers the CSS toggle -->
+                                <input type="checkbox" id="theme-toggle" style="display:none;">
+                                <!-- Label acts as the clickable icon -->
+                                <label for="theme-toggle" class="theme-toggle-label" title="Toggle dark mode">
+                                    <i class="fa fa-moon-o" aria-hidden="true"></i>
+                                </label>
                             </li>
                             {% endif %}
                             {% if config.repo_url %}
                             <li class="nav-item">
-                                <a href="{{ config.repo_url }}">
-                                    <div class="md-source-repo-icon">
-                                        <i class="fa fa-github-alt" aria-hidden="true"></i>
-                                    </div>
+                                <a href="{{ config.repo_url }}" class="repo-link">
+                                    <i class="fa fa-github-alt" aria-hidden="true"></i>
                                 </a>
                             </li>
                             {% endif %}
@@ -100,7 +90,7 @@
             </nav>
         </header>
         <main>
-            <section class="container post">
+            <section class="content-section">
                 <article>
                     <p>{{ page.content }}</p>
                 </article>
@@ -108,17 +98,4 @@
         </main>
     </div>
 </body>
-{%- if config.theme.darkreader %}
-<script>
-    var themeToggle = document.getElementById("theme-toggle")
-    themeToggle.classList.add(DarkReader.isEnabled() ? "fa-moon-o" : "fa-sun-o");
-    themeToggle.addEventListener("click", function () {
-        DarkReader.auto(false);
-		if (themeToggle.classList.toggle("fa-sun-o")) DarkReader.disable();
-		if (themeToggle.classList.toggle("fa-moon-o")) DarkReader.enable();
-		localStorage.setItem("theme", DarkReader.isEnabled() ? "dark" : "light");
-    });
-</script>
-{%- endif %}
-
 </html>
