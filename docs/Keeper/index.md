@@ -21,7 +21,7 @@ We got a website. Let’s take a look.
 $ firefox http://$TARGET &
 ```
 
-![Initial page](Assets/initial_page_keeper.jpg)
+![Initial page](Assets/initial_page_keeper.webp)
 
 We’re directed to `tickets.keeper.htb/rt/`. Let’s add `keeper.htb` and `tickets.keeper.htb` to `/etc/hosts` since there’s no dns sever to resolve the domain for us.
 
@@ -31,11 +31,11 @@ $ sudo bash -c "echo ${TARGET} keeper.htb tickets.keeper.htb >> /etc/hosts"
 
 Now following the link we get to a Request Tracker login panel.
 
-![Request Tracker login page](Assets/request_tracker_website.jpg)
+![Request Tracker login page](Assets/request_tracker_website.webp)
 
 Since this seems to be a generic open source thing let’s see if there are any known vulnerabilities for our version.
 
-![Request Tracker version info from the login page](Assets/request_tracker_version.jpg)
+![Request Tracker version info from the login page](Assets/request_tracker_version.webp)
 
 Quite a few vulnerabilities but no obvious RCE vector. Let’s run hydra and sql map in the background + vhost bust and google some more.
 
@@ -57,7 +57,7 @@ $ sqlmap --forms --level 5 -risk 3 -u http://tickets.keeper.htb/rt/NoAuth/Login.
 
 And instantly hydra returns a successful login! Lots of pages and options here but after digging for a bit we find a modify user page with some interesting details.
 
-![User edit page of the request tracker software showing interesting details about the Lise user](Assets/user_edit_page.jpg)
+![User edit page of the request tracker software showing interesting details about the Lise user](Assets/user_edit_page.webp)
 
 Since we have a password and a user now let’s run hydra on ssh to see if we can get a login (Doesn’t make much sense to fuzz the app anymore, we’re root).
 
@@ -233,7 +233,7 @@ Combined: �?{ø, �?, ,, l, `, -, ', ], §, A, I, :, =, _, c, M}dgrød med fl
 
 Got something. Very norse looking password but doesn’t seem complete. Bruteforcing the remaining letters may take a while as the word list will have to contain norse alphabet letters as well. Let’s just toss what we got into google and see if there’s anything similar looking and build a wordlist.
 
-![google search for dgrød med fløde](Assets/odd_danish_meal.jpg)
+![google search for dgrød med fløde](Assets/odd_danish_meal.webp)
 
 Seems like the main candidate is `Rødgrød med fløde`. The second letter seems to be in the suggested potential list, but the first one is unknown. We’ll have to try lower and upper case.
 
@@ -256,17 +256,17 @@ kpcli:/>
 
 Root putty key here!
 
-![Shows the html db export from keepassxc](Assets/keepassxc_dump.jpg)
+![Shows the html db export from keepassxc](Assets/keepassxc_dump.webp)
 
 Some stuff in the recycle bin but not very interesting.
 
-![User name and password in trash. User Name:Password](Assets/keepass_recycle_1.jpg)
+![User name and password in trash. User Name:Password](Assets/keepass_recycle_1.webp)
 
-![User name and password in trash. User Michael321:12345](Assets/keepass_recycle_2.jpg)
+![User name and password in trash. User Michael321:12345](Assets/keepass_recycle_2.webp)
 
 Now we can use either the `puttygen` command from the `putty-tools` package to convert the keys into openssh format or use wine [wine](https://www.winehq.org/) to run the windows version of puttygen and use the gui.
 
-![Pictures show steps on how to convert ppk key to openssh. Load (key) -> Conversions -> Export OpenSSH Key](Assets/export_ppk_to_openssh_putty_gen_wine.jpg)
+![Pictures show steps on how to convert ppk key to openssh. Load (key) -> Conversions -> Export OpenSSH Key](Assets/export_ppk_to_openssh_putty_gen_wine.webp)
 
 Now that we have the key we can try logging in as root using ssh.
 

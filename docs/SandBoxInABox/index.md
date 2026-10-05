@@ -29,11 +29,11 @@ True
 
 My first thought was to open it up with ghidra (I've actually found answers for all the challenge questions with just static analysis; only later messing with dynamic analysis).
 
-![popup after importing file into ghidra](Assets/ghidra_crackme_import.jpg)
+![popup after importing file into ghidra](Assets/ghidra_crackme_import.webp)
 
 The import page provided a bunch of information right off the bat. Identifying the binary as Golang, showing the LD flags which hinted at the binary being stripped and displaying some really odd looking dependencies. At this point i wasn't really sure what to expect as i've never reverse engineered a Golang binary before but decided to jump right in by opening it up and letting ghidra analyze it. This resulted in a fairly confusing output. This probably is not the main function.
 
-![initial view inside of ghidra after analisys of the binary](Assets/ghidra_initial_analisys.jpg)
+![initial view inside of ghidra after analisys of the binary](Assets/ghidra_initial_analisys.webp)
 
 I've decided to try and find the main function in a "Hello, World!" program as this way i would have a well known static string to look for.
 
@@ -60,19 +60,19 @@ After some time i managed to figure out where the main function is by searching 
 ff d0
 ```
 
-![highlited found pattern and emphasis on the ff d0 bytes at the end of the first listed pattern](Assets/pattern_find.jpg)
+![highlited found pattern and emphasis on the ff d0 bytes at the end of the first listed pattern](Assets/pattern_find.webp)
 
 When googling for more information i stumbled upon the https://github.com/mooncat-greenpy/Ghidra_GolangAnalyzerExtension add-on which significantly sped up the reverse engineering process. Though as with all tools in this field, i also found [ways it can fail](https://github.com/kuqadk3/CTF-and-Learning/blob/master/golang-function-name-obfuscation-how-to-fool-analysis-tools.md) Luckily in this case it worked great, recovering a ton of information after re-running the auto analysis.
 
-![view of the main.main function after automatic analisys by the mentioned extension](Assets/analised_mainfunc.jpg)
+![view of the main.main function after automatic analisys by the mentioned extension](Assets/analised_mainfunc.webp)
 
 After cleaning up the compilation it seems the main function contains a for loop calling 5 functions (likely in parallel guessing from the wait group and newproc? Possibly go routines?)
 
-![cleanup analysis of the main.main function showing an array of 5 function pointers](Assets/analised_mainfunc_array.jpg)
+![cleanup analysis of the main.main function showing an array of 5 function pointers](Assets/analised_mainfunc_array.webp)
 
 Let's look at what they do. The first one seems interesting right off the bat.
 
-![decompilation of the first function of the array](Assets/first_func.jpg)
+![decompilation of the first function of the array](Assets/first_func.webp)
 
 It seems the function taking the odd looking string is doing some sort of decoding. Encoding strings is a common technique to make static reverse engineering more difficult. Let's try and reimplement it in python.
 
@@ -99,7 +99,7 @@ b'eobd\\efqgjmbmg\\dqbuz\\albw'
 
 Well that sure looks like something that i should make a note of! (I've only left the beginning to avoid directly giving away answers.) Since this is all this function does let's look at the next one.
 
-![decompilation of the second function of the array](Assets/second_func.jpg)
+![decompilation of the second function of the array](Assets/second_func.webp)
 
 This one seems quite similar, but it calls `os.Stat` on the decoded string. After decoding the string it seems all this function does is get information about a specific file.
 
@@ -110,25 +110,25 @@ This one seems quite similar, but it calls `os.Stat` on the decoded string. Afte
 
 The third function starts to get a bit more complex. First it decodes two strings using the decode function resulting in `GetModuleHandleW` and `GetModuleHandleA`. Then those strings are passed into some other function and LoadLibrary from the binject library's universal loader is called. 
 
-![decompilation of the third function of the array](Assets/third_func.jpg)
+![decompilation of the third function of the array](Assets/third_func.webp)
 
 Taking a closer look at the mystery function it seems to be doing some sort of decryption on a block of static data.
 
-![decompilation of the decryption function](Assets/decrypt_func.jpg)
+![decompilation of the decryption function](Assets/decrypt_func.webp)
 
 The source code of the [cipher package is open source](https://cs.opensource.google/go/go/+/refs/tags/go1.23.2:src/crypto/cipher/cbc.go) aiding figuring out that the odd looking function call at the bottom of the decompilation is actually a `CryptBlocks` call on an `cbcDecryptor`. If we didn't have the source code or for some reason couldn't figure out what function gets called there we could turn to dynamic analysis.
 
-![picture of the value of RDX inside of x64dbg after hitting a breakpoint on the operations before the call to the bottom function](Assets/x64dbg_object_function_call.jpg)
+![picture of the value of RDX inside of x64dbg after hitting a breakpoint on the operations before the call to the bottom function](Assets/x64dbg_object_function_call.webp)
 
 By doing some address translations between ghidra and x64dbg we can set a breakpoint at the MOV instruction which applies the offset to what i called `BlockModeRax`. Then we can take the address in RDX translate it back into ghidra land and take a look at what it was pointing.
 
-![ghidra interface showing that the translated address found in rdx points to the beggining of Interface.cipher.BlockMode](Assets/interface_block_mode_type.jpg)
+![ghidra interface showing that the translated address found in rdx points to the beggining of Interface.cipher.BlockMode](Assets/interface_block_mode_type.webp)
 
 Here we can see that `RDX + 0x20` is a pointer to the `CryptBlocks` function.
 
 Now knowing the both the key and the initialization vector we can manually decrypt the data (You can simply select the bytes in the decompiler view and then copy). I found that using CyberChef was the simplest but generally when dealing with cryptography you should stick as closely to the original language/code/library as possible.
 
-![cyberchef interface showing the result of: Hex decode - AesCBC decrypt - File identify](Assets/cyber_chef.jpg)
+![cyberchef interface showing the result of: Hex decode - AesCBC decrypt - File identify](Assets/cyber_chef.webp)
 
 ```go
 // extract.go
@@ -161,31 +161,31 @@ func main() {
 
 The encrypted data decodes to what seems to be a PE file! Now it makes sense why there is a call to the loader. We'll have to analyze it too so let's import it into ghidra.
 
-![ghidra popup warning box](Assets/ghidra_mingw_warning.jpg)
+![ghidra popup warning box](Assets/ghidra_mingw_warning.webp)
 
 After analysis a message pops ups warning us about missing MinGW pseudo-relocation list, which is quite interesting. We're also greeted with what looks like a [typical DLL entrypoint](https://learn.microsoft.com/en-us/windows/win32/dlls/dllmain). Checking the exports and imports we can see that this library uses MSYS and exports one function (MSYS is like a Windows compatibility layer for binaries using the POSIX standard interface; more [here](https://www.reddit.com/r/learnprogramming/comments/k0gelm/what_are_msys2_and_mingw/) and [here](https://stackoverflow.com/questions/25751536/differences-between-msys2-and-cygwin)).
 
-![exports list inside of ghidra](Assets/imports_exports_ghidra.jpg)
+![exports list inside of ghidra](Assets/imports_exports_ghidra.webp)
 
 Interestingly enough none of the required DLLs are included. So how could our malicious program use the DLL without its dependencies? Well it doesn't. The Binject universal loader [doesn't actually resolve dependencies](https://github.com/Binject/universal/blob/bea739e758c0c9710fe544fd554a9b2fe36f96e1/loader_windows.go#L23) or call DllMain meaning the malicious binary would just crash if it tried to call the exported function so it just waits for 15 seconds and returns.
 
-![picture showign decompilation proving that no exported functions are called](Assets/exported_functions_not_called.jpg)
+![picture showign decompilation proving that no exported functions are called](Assets/exported_functions_not_called.webp)
 
 What bothered me for a while is that the function containing the actual string the challenge expects as an answer does not seem to be called anywhere outside some calling convention compatibility stub when looking for references in ghidra.
 
-![ghidra interface showing that references to the string initialization function are not found](Assets/no_references_to_init_function_of_string.jpg)
+![ghidra interface showing that references to the string initialization function are not found](Assets/no_references_to_init_function_of_string.webp)
 
 And that the exported function was referencing some address in the .bss section.
 
-![picture showing ghidra interface confgirming that the address used in the exported func points to the .bss section](Assets/exported_function_referencing_bss.jpg)
+![picture showing ghidra interface confgirming that the address used in the exported func points to the .bss section](Assets/exported_function_referencing_bss.webp)
 
 After much digging i figured out that this is due to the string being a C++ `const (or at least global) std::string` object. As it turns out static and global objects are initialized in the `_DllMainCRTStartup` function called just before `DllMain` but because this DLL is using MSYS it can't find the initialization function. We can see this behavior in action (including small string optimization) in x64dbg
 
-![x64dbg showing initialized string in .bss section](Assets/x64dbg_string_init.jpg)
+![x64dbg showing initialized string in .bss section](Assets/x64dbg_string_init.webp)
 
 Some more cool things i found while messing with the DLL is that we can actually recover the original name of the DLL and the time when it was created!
 
-![ghidra interface showing the export entry](Assets/timestamp_and_original_name.jpg)
+![ghidra interface showing the export entry](Assets/timestamp_and_original_name.webp)
 
 ```python
 Python 3.13.0 (tags/v3.13.0:60403a5, Oct  7 2024, 09:38:07) [MSC v.1941 64 bit (AMD64)] on win32
@@ -253,21 +253,21 @@ ptr: 0x4d1b41030, res: 1, buf: ABCDEFGH, read: 8, size: 8
 
 Well that was a deep dive. Moving on to the fourth function we can see some more obfuscated strings but also some network communication being setup.
 
-![decompilation of the fourth function of the array](Assets/fourth_func.jpg)
+![decompilation of the fourth function of the array](Assets/fourth_func.webp)
 
 It seems to perform a `POST` request to `https://XXXXXXXXXXX/receive_secret` with the content of `You will not break me.XXXXXXXXXXXXXXXXXX`. Setting the content type to `Content-Type: text/plain`. Fairly straightforward.
 
 Moving onto the last function. It seems to call some mystery function number 1, waits for 1 second, and then calls mystery function number 2.
 
-![decompilation of the last function of the array](Assets/last_func.jpg)
+![decompilation of the last function of the array](Assets/last_func.webp)
 
 The first function seems to query the environment variable `APPDATA` then append it the filename `DAXXXXXXXX.txt` (`%APPDATA%/DAXXXXXXXX.txt`). After that it writes the content `In memory of XXXXXX` into it. If the file is to be created, it is created with `0644` permissions.
 
-![ghidra interface showing decompilation of the writer function](Assets/file_write_func.jpg)
+![ghidra interface showing decompilation of the writer function](Assets/file_write_func.webp)
 
 The function called 1 second later simply deletes this file.
 
-![ghidra interface showing decompilation of the function deleting the file](Assets/file_delete_func.jpg)
+![ghidra interface showing decompilation of the function deleting the file](Assets/file_delete_func.webp)
 
 Now with all the challenge questions answered with static analysis; i've decided to also get the answers using dynamic analysis. Starting off with the first function, we can take a full memory dump using a Process Explorer then simply search for the given prefix with some length range:
 
@@ -295,7 +295,7 @@ flag_XXXXXXXXXXXXXXXXXXXX
 
 For the second function we can use Process Monitor and filter on the executable name:
 
-![sysmon interface showing file writes and accesses](Assets/file_check_and_create.jpg)
+![sysmon interface showing file writes and accesses](Assets/file_check_and_create.webp)
 
 We can also see the file write and delete from the fourth function here. To get the DLL used in the third function we can run binwalk on the dump:
 
@@ -406,7 +406,7 @@ False
 
 Opening both files in 010 Editor it seems this is due to different image bases. Should be safe to ignore.
 
-![interface of the hex editor visualizing the differences](Assets/difference_in_dll.jpg)
+![interface of the hex editor visualizing the differences](Assets/difference_in_dll.webp)
 
 To find the read file we can simply run strings:
 ```bash
@@ -415,7 +415,7 @@ $ strings interesting.dll.infected | grep -E "^.{4,99}"
 
 For seeing the request made by the fourth function i used Inetsim-NG and BurpSuite similar to how Jeff explained in the series.
 
-![the performed post request inside of a burpsuite history window](Assets/post_request_burpsuite.jpg)
+![the performed post request inside of a burpsuite history window](Assets/post_request_burpsuite.webp)
 
 Lastly we can get the file contents from the fourth function using either Capture-Py or my PowerShell rewrite of it.
 

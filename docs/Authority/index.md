@@ -53,7 +53,7 @@ $ firefox http://authority.htb/ &
 ```
 
 Seems to just be a default IIS server.
-![Default IIS website picture](Assets/iis_defualt.jpg)
+![Default IIS website picture](Assets/iis_defualt.webp)
 
 ```bash
 $ rpcclient -N -U "" $TARGET
@@ -365,29 +365,29 @@ pWm_@dm!N_!23
 
 We have a bunch of creds to check now but let’s have a look at the website on port 8443 first.
 
-![PWM service login page](Assets/ldap_pwm_self_service.jpg)
+![PWM service login page](Assets/ldap_pwm_self_service.webp)
 
 Seems to be some sort of a password self service thing. Trying to log in with `admin admin` throws an ldap error leaking some interesting information:
 
-![Popup Showing the leak](Assets/thing_leak.jpg)
+![Popup Showing the leak](Assets/thing_leak.webp)
 
 (unable to bind to ldaps://authority.authority.htb:636 as CN=svc_ldap,OU=Service Accounts,OU=CORP,DC=authority,DC=htb)
 
 Clicking on Configuration Manager we get a password prompt. Entering the `pWm_@dm!N_!23` password we found in the ansible vault allows us in.
 
-![Login prompt on the config manager page of PWM](Assets/config_manager.jpg)
+![Login prompt on the config manager page of PWM](Assets/config_manager.webp)
 
 Here we can get the db and the config but there doesn’t seem to be anything interesting inside.
 
-![Config manager page after logging in](Assets/config_manager_auth.jpg)
+![Config manager page after logging in](Assets/config_manager_auth.webp)
 
 Going over to the editor page we’re greeted with a ton of options. Most interesting is the ldap connection page where we seem to be able to change the ldap url the service with try to authenticate to.
 
-![ldap connection settings of the PWM application](Assets/ldap_connection_settings.jpg)
+![ldap connection settings of the PWM application](Assets/ldap_connection_settings.webp)
 
 Let’s change the ldap url to point to our vm and start responder to see if we can snatch some creds.
 
-![The ldap connection address field after entering attacker vm ip](<Assets/change_ldap_url.jpg>)
+![The ldap connection address field after entering attacker vm ip](Assets/change_ldap_url.webp)
 
 ```bash
 $ sudo responder -I tun0

@@ -33,11 +33,11 @@ $ sudo bash -c "echo ${TARGET} cozyhosting.htb >> /etc/hosts"
 
 Refreshing the page again we can access what looks like a hosting website.
 
-![View of the main website](Assets/hosting_page.jpg)
+![View of the main website](Assets/hosting_page.webp)
 
 Since there seems to be quite a few buttons; let’s run an automated scan using zapproxy to spider to website and maybe pickup on something (doesn’t end up finding anything interesting).
 
-![View of the quick start page of zap proxy](Assets/zap_spider.jpg)
+![View of the quick start page of zap proxy](Assets/zap_spider.webp)
 
 While at it let’s run a vhost fuzzer (nothing found) and a generic feroxbuster fuzz:
 
@@ -57,7 +57,7 @@ Ignoring template assets
 
 We see that there’s an admin page that we don’t have access to, so the login page becomes really interesting:
 
-![login page of the website](Assets/login_page.jpg)
+![login page of the website](Assets/login_page.webp)
 
 Since we don’t really know the tech stack used to build the app yet; let’s run a special character fuzz with burp suite + sqlmap in the background and try to figure out how the website is built.
 
@@ -66,15 +66,15 @@ $ sqlmap --forms --level 5 -risk 3 -u http://cozyhosting.htb/login
  ... nothing interesting ...
 ```
 
-![Burp suite intruder windows showing the fuzzed fields](Assets/burp_special_char_fuzz.jpg)
+![Burp suite intruder windows showing the fuzzed fields](Assets/burp_special_char_fuzz.webp)
 
 Intercepting the login request with burp suite we can see in the response that the server sets a `JSESSIONID` cookie. Is the back-end based on java?
 
-![Response to the login request show in burp suite](Assets/jess_cokie_from_login_resp.jpg)
+![Response to the login request show in burp suite](Assets/jess_cokie_from_login_resp.webp)
 
 Going to a non-existing page we get an error, googling it mentions spring boot framework. This checks out with the cookie.
 
-![Whitelabel Error Page of spring boot](Assets/error_page_web.jpg)
+![Whitelabel Error Page of spring boot](Assets/error_page_web.webp)
 
 There seems to be a spring specific word list in SecLists. Let’s run that with feroxbuster:
 
@@ -164,15 +164,15 @@ $ wget http://cozyhosting.htb/actuator/sessions && cat sessions | jq
 
 Seems like someone else is logged in currently. Let’s use their session cookie and see if we can access /admin.
 
-![Editing the cookie using the firefox dev tools](Assets/firefox_changing_cookie.jpg)
+![Editing the cookie using the firefox dev tools](Assets/firefox_changing_cookie.webp)
 
 Refreshing the page it seems that we’re logged in!
 
-![Login button is missing from page. Assuming successful login.](Assets/logged_in.jpg)
+![Login button is missing from page. Assuming successful login.](Assets/logged_in.webp)
 
 Going to the admin panel we’re greeted with what looks like some kind of automated patching over ssh tool.
 
-![View of the admin panel from /admin](Assets/admin_panel.jpg)
+![View of the admin panel from /admin](Assets/admin_panel.webp)
 
 The submit functionality seems use the /execssh endpoint previously identified as interesting in the json from the mapping actuator.
 
@@ -200,11 +200,11 @@ Redirects to: `http://cozyhosting.htb/admin?error=Host%20key%20verification%20fa
 
 Let’s fuzz the form with special characters using burp suite again.
 
-![Showing intruder page in burp suite setting up fuzz](Assets/ssh_form_fuzz_burp.jpg)
+![Showing intruder page in burp suite setting up fuzz](Assets/ssh_form_fuzz_burp.webp)
 
 It seems the error parameter has the output of the ssh command.
 
-![http response showing ssh output passed in as the err param](Assets/burp_ssh_output_in_err.jpg)
+![http response showing ssh output passed in as the err param](Assets/burp_ssh_output_in_err.webp)
 
 Possibly vulnerable to command injection? Let’s try some payloads.
 
